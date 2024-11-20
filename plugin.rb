@@ -19,20 +19,20 @@ after_initialize do
     end
   end
 
-  # Use SiteSetting.set for a single setting.
-  SiteSetting.set(:color_user_names_enabled, true)
-
-  # Initialize dynamic defaults (important for new groups)
+  # Set Defaults for dynamic settings inside after_initialize
   Group.all.each do |group|
-    SiteSettings::DEFAULTS["color_user_names_group_#{group.id}_color"] = "#000000"
+    SiteSetting.defaults["color_user_names_group_#{group.id}_color"] = "#000000"
   end
 
+  # Set the enabled setting
+  SiteSetting.set(:color_user_names_enabled, true)
+
   add_to_serializer(:current_user, :group_colors) do
-    ColorUserNames.generate_group_color_css # Ensure CSS is updated
+    ColorUserNames.generate_group_color_css
     Group.order(:position).map do |group|
       {
         group_id: group.id,
-        color: SiteSetting.send("color_user_names_group_#{group.id}_color") 
+        color: SiteSetting.send("color_user_names_group_#{group.id}_color")
       }
     end
   end
@@ -68,13 +68,13 @@ after_initialize do
 
         SiteSetting.set("color_user_names_group_#{group.id}_color", color)
 
-        ColorUserNames.generate_group_color_css # Regenerate CSS after color update
+        ColorUserNames.generate_group_color_css
         render json: { success: true }
       end
 
       def update_order
         group_order = params[:order].map(&:to_i)
-        groups = Group.where(id: group_order) # Use `where` and correct indexing
+        groups = Group.where(id: group_order)
         groups.each_with_index do |group, index|
           group.update_attribute(:position, index + 1)
         end
@@ -83,13 +83,14 @@ after_initialize do
       end
     end
   end
+
 end
 
 def self.generate_group_color_css
   css = ""
   Group.order(:position).each do |group|
-    color = SiteSetting.send("color_user_names_group_#{group.id}_color", "#000000") # Default color
-    css << ".group-#{group.id}-colored-name { color: #{color}; }\n"
+    color = SiteSetting.send("color_user_names_group_#{group.id}_color", "#000000")
+    css << ".group-#{group.id}-colored-name { color: #{color}; }\n" # or span.group... if needed.
   end
   File.write("#{Rails.root}/plugins/color-user-names/assets/stylesheets/color-user-names.scss", css)
 end
