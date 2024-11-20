@@ -21,20 +21,15 @@ after_initialize do
 
   SiteSetting.set(:color_user_names_enabled, true)
 
-  # CORRECT way to register dynamic settings (using register_setting):
-  Group.all.each do |group|
-    register_setting("color_user_names_group_#{group.id}_color", {
-      type: :string, # Important: specify the type
-      default: "#f3f3f3" # Provide a default
-    })
-  end
+  # Dynamic settings creation moved to the controller
 
   add_to_serializer(:current_user, :group_colors) do
     ColorUserNames.generate_group_color_css
     Group.order(:position).map do |group|
       {
         group_id: group.id,
-        color: SiteSetting.send("color_user_names_group_#{group.id}_color")
+        # Use SiteSetting.get to retrieve the dynamic setting:
+        color: SiteSetting.get("color_user_names_group_#{group.id}_color", "#000000") # Default color
       }
     end
   end
@@ -58,17 +53,34 @@ after_initialize do
       requires_admin
 
       def groups
-        groups = Group.order(:position).map do |group|
-          { id: group.id, name: group.name, color: SiteSetting.send("color_user_names_group_#{group.id}_color") }
-        end
-        render json: { groups: groups }
+          # Create settings if they don't exist:
+          Group.order(:position).each do |group|
+              setting_name = "color_user_names_group_#{group.id}_color"
+              SiteSetting.set(setting_name, "#000000") unless SiteSetting.where(name: setting_name).exists?
+          end
+
+          groups = Group.order(:position).map do |group|
+            { 
+                id: group.id, 
+                name: group.name, 
+                color: SiteSetting.send("color_user_names_group_#{group.id}_color")
+            }
+          end
+          render json: { groups: groups }
       end
 
       def update_color
         group_id = params[:id].to_i
         color = params[:color]
 
-        SiteSetting.set("color_user_names_group_#{group.id}_color", color)
+        setting_name = "color_user_names_group_#{group.id}_color"
+
+        # Check if setting exists before updating. If not create it.
+        if SiteSetting.where(name: setting_name).exists?
+            SiteSetting.set(setting_name, color)
+        else
+            SiteSetting.create!(name: setting_name, data_type: 7, value: color) # data_type 7 is for string
+        end
 
         ColorUserNames.generate_group_color_css
         render json: { success: true }
@@ -85,7 +97,6 @@ after_initialize do
       end
     end
   end
-
 end
 
 def self.generate_group_color_css
