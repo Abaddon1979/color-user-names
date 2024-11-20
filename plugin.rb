@@ -3,12 +3,11 @@
 # name: color-user-names
 # about: Colors user names based on group membership.
 # version: 0.1
-# authors: Your Name
+# authors: Abaddon
 
 enabled_site_setting :color_user_names_enabled
 
 register_asset "stylesheets/color-user-names.scss"
-register_admin_route "colorUserNames.index", "settings"
 
 after_initialize do
   module ::ColorUserNames
@@ -35,13 +34,18 @@ after_initialize do
   require_dependency 'color_user_names/username_decorator'
   Discourse::Cooked::UsernameDecorator.prepend(ColorUserNames::UsernameDecorator)
 
+  # Correct way to add admin route:
+  add_admin_route 'color_user_names.index', 'color-user-names'
+
   Discourse::Application.routes.append do
-    get "/admin/plugins/color-user-names/groups" => "color_user_names#groups"
-    put "/admin/plugins/color-user-names/update_color/:id" => "color_user_names#update_color"
-    put "/admin/plugins/color-user-names/update_order" => "color_user_names#update_order"
+    scope "/admin/plugins/color-user-names" do # Scoped routes
+      get "/groups" => "color_user_names#groups"
+      put "/update_color/:id" => "color_user_names#update_color"
+      put "/update_order" => "color_user_names#update_order"
+    end
   end
 
-  # Controller (within plugin.rb)
+  # Controller (within after_initialize)
   require_dependency 'application_controller'
   module ::ColorUserNames
     class ColorUserNamesController < ::ApplicationController
@@ -57,23 +61,23 @@ after_initialize do
       def update_color
         group_id = params[:id].to_i
         color = params[:color]
-        SiteSetting.set("color_user_names_group_#{group_id}_color", color)
+        SiteSetting.set("color_user_names_group_#{group.id}_color", color)
         ColorUserNames.generate_group_color_css
         render json: { success: true }
       end
 
       def update_order
-        group_order = params[:order]
-        groups = Group.where(id: group_order) # Use where for ordering
-        groups.each_with_index do |group, index|
-           group.update_attribute(:position, index + 1)
-        end
-        ColorUserNames.generate_group_color_css
-        render json: { success: true }
+          group_order = params[:order]
+          groups = Group.where(id: group_order) # Use where for ordering
+          groups.each_with_index do |group, index|
+            group.update_attribute(:position, index + 1)
+          end
+          ColorUserNames.generate_group_color_css
+          render json: { success: true }
       end
     end
   end
-end # end after_initialize
+end
 
 def self.generate_group_color_css
   css = ""
