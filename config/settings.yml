@@ -1,3 +1,4 @@
 plugins:
-  color_user_names:
+  color_user_names_enabled:
     default: true
+    client: true
