@@ -21,9 +21,12 @@ after_initialize do
 
   SiteSetting.set(:color_user_names_enabled, true)
 
-  # CORRECT way to register dynamic settings (using register_dynamic_setting):
+  # CORRECT way to register dynamic settings (using register_setting):
   Group.all.each do |group|
-    register_dynamic_setting("color_user_names_group_#{group.id}_color")
+    register_setting("color_user_names_group_#{group.id}_color", {
+      type: :string, # Important: specify the type
+      default: "#f3f3f3" # Provide a default
+    })
   end
 
   add_to_serializer(:current_user, :group_colors) do
