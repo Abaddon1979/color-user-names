@@ -1,0 +1,8 @@
+<div class="color-user-names-settings">
+  {{#each model.groups as |group|}}
+    <div class="group-color-setting" data-group-id={{group.id}}>
+      <label>{{group.name}} Color:</label>
+      <Input @type="color" @value={{group.color}} @input={{action "updateColor" group.id value="target.value"}} />
+    </div>
+  {{/each}}
+</div>

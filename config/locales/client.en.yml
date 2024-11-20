@@ -1,7 +1,4 @@
 en:
-  js:
+  plugins:
     color_user_names:
-      group_order_label: 'Group Order'
-      add_group_button: 'Add Group'
-      remove_group_button: 'Remove Group'
-      save_changes_button: 'Save Changes'
+      title: "User Name Colors"
