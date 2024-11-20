@@ -19,12 +19,13 @@ after_initialize do
     end
   end
 
-  # Set Defaults for dynamic settings inside after_initialize
+  # CORRECT way to set defaults for dynamic settings:
+  group_defaults = {}
   Group.all.each do |group|
-    SiteSetting.defaults["color_user_names_group_#{group.id}_color"] = "#000000"
+    group_defaults["color_user_names_group_#{group.id}_color"] = "#000000"
   end
+  SiteSetting.defaults.merge!(group_defaults)
 
-  # Set the enabled setting
   SiteSetting.set(:color_user_names_enabled, true)
 
   add_to_serializer(:current_user, :group_colors) do
