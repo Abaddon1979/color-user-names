@@ -1,2 +1,3 @@
 color_user_names:
   default: false
+  client: true
