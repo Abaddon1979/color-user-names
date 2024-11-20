@@ -19,19 +19,20 @@ after_initialize do
     end
   end
 
-  SiteSetting.add(:color_user_names_enabled, :boolean, default: false)
-    
-  # Correct way to add default values for dynamic settings
+  # Use SiteSetting.set for a single setting.
+  SiteSetting.set(:color_user_names_enabled, true)
+
+  # Initialize dynamic defaults (important for new groups)
   Group.all.each do |group|
-      SiteSettings::DEFAULTS["color_user_names_group_#{group.id}_color"] = "#000000"
+    SiteSettings::DEFAULTS["color_user_names_group_#{group.id}_color"] = "#000000"
   end
-  
+
   add_to_serializer(:current_user, :group_colors) do
-    ColorUserNames.generate_group_color_css
+    ColorUserNames.generate_group_color_css # Ensure CSS is updated
     Group.order(:position).map do |group|
       {
         group_id: group.id,
-        color: SiteSetting.send("color_user_names_group_#{group.id}_color")
+        color: SiteSetting.send("color_user_names_group_#{group.id}_color") 
       }
     end
   end
@@ -42,7 +43,7 @@ after_initialize do
   add_admin_route 'color_user_names.index', 'color-user-names'
 
   Discourse::Application.routes.append do
-    scope "/admin/plugins/color-user-names" do 
+    scope "/admin/plugins/color-user-names" do
       get "/groups" => "color_user_names#groups"
       put "/update_color/:id" => "color_user_names#update_color"
       put "/update_order" => "color_user_names#update_order"
@@ -65,32 +66,29 @@ after_initialize do
         group_id = params[:id].to_i
         color = params[:color]
 
-        # Set dynamic site setting
-        SiteSetting.set("color_user_names_group_#{group_id}_color", color)
+        SiteSetting.set("color_user_names_group_#{group.id}_color", color)
 
-        ColorUserNames.generate_group_color_css
+        ColorUserNames.generate_group_color_css # Regenerate CSS after color update
         render json: { success: true }
       end
 
       def update_order
-        group_order = params[:order]
-        groups = Group.where(id: group_order)
+        group_order = params[:order].map(&:to_i)
+        groups = Group.where(id: group_order) # Use `where` and correct indexing
         groups.each_with_index do |group, index|
-          group.update_attribute(:position, index + 1) # assumes you have a position column
+          group.update_attribute(:position, index + 1)
         end
-
         ColorUserNames.generate_group_color_css
         render json: { success: true }
       end
     end
   end
-
 end
 
 def self.generate_group_color_css
   css = ""
   Group.order(:position).each do |group|
-    color = SiteSetting.send("color_user_names_group_#{group.id}_color", "#000000")
+    color = SiteSetting.send("color_user_names_group_#{group.id}_color", "#000000") # Default color
     css << ".group-#{group.id}-colored-name { color: #{color}; }\n"
   end
   File.write("#{Rails.root}/plugins/color-user-names/assets/stylesheets/color-user-names.scss", css)
