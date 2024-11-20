@@ -19,14 +19,12 @@ after_initialize do
     end
   end
 
-  # CORRECT way to set defaults for dynamic settings:
-  group_defaults = {}
-  Group.all.each do |group|
-    group_defaults["color_user_names_group_#{group.id}_color"] = "#000000"
-  end
-  SiteSetting.defaults.merge!(group_defaults)
-
   SiteSetting.set(:color_user_names_enabled, true)
+
+  # CORRECT way to register dynamic settings (using register_dynamic_setting):
+  Group.all.each do |group|
+    register_dynamic_setting("color_user_names_group_#{group.id}_color")
+  end
 
   add_to_serializer(:current_user, :group_colors) do
     ColorUserNames.generate_group_color_css
